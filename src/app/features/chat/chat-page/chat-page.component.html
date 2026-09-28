@@ -1,0 +1,98 @@
+@if (chat(); as c) {
+  <div class="page">
+    <section class="main-col">
+      <app-chat-header [chat]="c" [model]="modelRef()" (modelChange)="setModel($event)" />
+
+      @if (loadState() === 'loading') {
+        <div class="loading" aria-busy="true">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="sk-block">
+              <div class="skeleton sk-line" [style.width.%]="i === 2 ? 40 : 70"></div>
+              <div class="skeleton sk-line" [style.width.%]="i === 2 ? 30 : 90"></div>
+            </div>
+          }
+        </div>
+      } @else if (loadState() === 'error') {
+        <app-empty-state icon="circle-alert" [title]="'chat.loadError' | t" [description]="'chat.loadErrorHint' | t" />
+      } @else if (isEmpty()) {
+        <div class="empty-wrap">
+          <div class="empty-center">
+            <app-welcome [projectName]="project()?.name ?? null" (pick)="useSuggestion($event)" />
+            <div class="composer-slot centered">
+              <app-composer
+                [draftKey]="c.id"
+                [generating]="generating()"
+                [model]="modelRef()"
+                [temporary]="c.temporary"
+                [showTemporaryToggle]="true"
+                [submit]="submit"
+                (stop)="stop()"
+                (modelChange)="setModel($event)"
+                (temporaryChange)="setTemporary($event)"
+                (openPanel)="layout.rightPanel.set($event)"
+              />
+              @if (c.temporary) {
+                <p class="temp-note">
+                  <app-icon name="message-square-dashed" [size]="13" /> {{ 'chat.temporaryNote' | t }}
+                </p>
+              }
+            </div>
+          </div>
+        </div>
+      } @else {
+        <app-message-list
+          [chatId]="c.id"
+          [path]="path()"
+          [allMessages]="allMessages()"
+          [busy]="generating()"
+          [highlightId]="m() ?? null"
+        />
+        <div class="composer-slot">
+          @if (forked()) {
+            <div class="fork-banner" role="status">
+              <app-icon name="git-branch" [size]="14" />
+              <span>{{ 'chat.forkNotice' | t }}</span>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="returnToLatest()">
+                {{ 'chat.backToLatest' | t }}
+              </button>
+            </div>
+          }
+          <app-composer
+            [draftKey]="c.id"
+            [generating]="generating()"
+            [model]="modelRef()"
+            [temporary]="c.temporary"
+            [submit]="submit"
+            [placeholder]="'composer.replyPlaceholder' | t"
+            (stop)="stop()"
+            (modelChange)="setModel($event)"
+            (editLast)="editLast()"
+            (openPanel)="layout.rightPanel.set($event)"
+          />
+          <p class="disclaimer">{{ 'chat.disclaimer' | t }}</p>
+        </div>
+      }
+    </section>
+
+    @if (layout.rightPanel() !== 'none') {
+      @if (layout.isMobile()) {
+        <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- el cierre por teclado es Escape -->
+        <div
+          class="panel-scrim"
+          (click)="layout.rightPanel.set('none')"
+          animate.enter="anim-fade-in"
+          animate.leave="anim-fade-out"
+        ></div>
+      }
+      <div class="side" [class.overlay]="layout.isMobile()" animate.enter="side-enter" animate.leave="side-leave">
+        <app-context-panel [chat]="c" (attachFromProject)="attachFromProject($event)" />
+      </div>
+    }
+  </div>
+} @else {
+  <div class="missing">
+    <app-empty-state icon="message-square" [title]="'chat.notFound' | t" [description]="'chat.notFoundHint' | t">
+      <a class="btn btn-primary" routerLink="/">{{ 'chat.new' | t }}</a>
+    </app-empty-state>
+  </div>
+}

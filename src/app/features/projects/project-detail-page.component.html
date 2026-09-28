@@ -1,0 +1,149 @@
+@if (project(); as p) {
+  <div class="page">
+    <a class="back" routerLink="/projects"><app-icon name="chevron-left" [size]="14" /> {{ 'projects.title' | t }}</a>
+    <header class="page-header">
+      @if (!layout.sidebarOpen() || layout.isMobile()) {
+        <button type="button" class="icon-btn" (click)="layout.toggleSidebar()" [attr.aria-label]="'sidebar.open' | t">
+          <app-icon [name]="layout.isMobile() ? 'menu' : 'panel-left'" />
+        </button>
+      }
+      <div class="page-title">
+        <h1>{{ p.name }}</h1>
+        <p>
+          @if (saveState() === 'saving') {
+            <span class="save-state"
+              ><app-icon name="loader-circle" [size]="12" class="spin" /> {{ 'common.saving' | t }}</span
+            >
+          } @else if (saveState() === 'saved') {
+            <span class="save-state"><app-icon name="check" [size]="12" /> {{ 'common.saved' | t }}</span>
+          } @else {
+            {{ 'project.updated' | t: { date: (p.updatedAt | shortDate: true) } }}
+          }
+        </p>
+      </div>
+      <button type="button" class="btn btn-primary" (click)="newChat()">
+        <app-icon name="square-pen" [size]="14" /> {{ 'project.newChat' | t }}
+      </button>
+    </header>
+
+    <div class="page-body">
+      <section class="card section">
+        <div class="stack">
+          <label class="field">
+            <span class="field-label">{{ 'project.name' | t }}</span>
+            <input class="input" [value]="name()" (input)="edit('name', $any($event.target).value)" maxlength="120" />
+          </label>
+          <label class="field">
+            <span class="field-label">{{ 'project.description' | t }}</span>
+            <input
+              class="input"
+              [value]="description()"
+              (input)="edit('description', $any($event.target).value)"
+              [placeholder]="'project.descriptionPlaceholder' | t"
+              maxlength="300"
+            />
+          </label>
+        </div>
+      </section>
+
+      <section class="card section">
+        <h2 class="section-title">{{ 'project.directory' | t }}</h2>
+        <p class="section-desc">{{ 'project.directoryHint' | t }}</p>
+        <div class="stack">
+          @if (p.rootName) {
+            <div class="folder">
+              <app-icon name="folder-open" [size]="16" />
+              <span class="folder-name">{{ p.rootName }}</span>
+              <span
+                class="badge"
+                [class.badge-success]="accessState() === 'granted'"
+                [class.badge-warning]="accessState() === 'prompt' || accessState() === 'missing'"
+              >
+                {{ stateKey() | t }}
+              </span>
+            </div>
+          }
+          <app-project-access [projectId]="p.id" />
+          @if (p.rootName) {
+            <div class="row">
+              <button type="button" class="btn btn-sm" (click)="connect()">
+                <app-icon name="folder-open" [size]="13" /> {{ 'project.changeFolder' | t }}
+              </button>
+              <button type="button" class="btn btn-sm btn-ghost" (click)="disconnect()">
+                {{ 'project.disconnect' | t }}
+              </button>
+            </div>
+          }
+          @if (p.snapshotAt) {
+            <p class="field-hint">
+              {{ 'project.snapshotInfo' | t: { n: p.snapshotFileCount ?? 0, date: (p.snapshotAt | shortDate: true) } }}
+            </p>
+          }
+        </div>
+      </section>
+
+      <section class="card section">
+        <h2 class="section-title">{{ 'project.instructions' | t }}</h2>
+        <p class="section-desc">{{ 'project.instructionsHint' | t }}</p>
+        <textarea
+          class="textarea"
+          rows="6"
+          [value]="instructions()"
+          (input)="edit('instructions', $any($event.target).value)"
+          [placeholder]="'project.instructionsPlaceholder' | t"
+          [attr.aria-label]="'project.instructions' | t"
+        ></textarea>
+      </section>
+
+      <section class="card section">
+        <h2 class="section-title">{{ 'project.defaultModel' | t }}</h2>
+        <p class="section-desc">{{ 'project.defaultModelHint' | t }}</p>
+        <div class="row">
+          <app-model-picker [value]="p.defaultModel" (changed)="setDefaultModel($event)" />
+          @if (p.defaultModel) {
+            <button type="button" class="btn btn-sm btn-ghost" (click)="clearDefaultModel()">
+              {{ 'common.clear' | t }}
+            </button>
+          }
+        </div>
+      </section>
+
+      <section class="card section">
+        <h2 class="section-title">{{ 'project.ignore' | t }}</h2>
+        <p class="section-desc">{{ 'project.ignoreHint' | t }}</p>
+        <textarea
+          class="textarea mono"
+          rows="5"
+          [value]="ignore()"
+          (input)="edit('ignore', $any($event.target).value)"
+          placeholder="*.generated.ts&#10;assets/videos/**"
+          [attr.aria-label]="'project.ignore' | t"
+          spellcheck="false"
+        ></textarea>
+      </section>
+
+      @if (p.source !== 'none') {
+        <section class="card section">
+          <h2 class="section-title">{{ 'project.files' | t }}</h2>
+          <div class="explorer-wrap">
+            <app-project-explorer [projectId]="p.id" [chatActions]="false" />
+          </div>
+        </section>
+      }
+
+      <section class="card section danger-zone">
+        <h2 class="section-title">{{ 'project.dangerZone' | t }}</h2>
+        <p class="section-desc">{{ 'project.deleteHint' | t }}</p>
+        <button type="button" class="btn btn-danger" (click)="remove()">
+          <app-icon name="trash" [size]="14" /> {{ 'project.delete' | t }}
+        </button>
+      </section>
+    </div>
+  </div>
+} @else {
+  <div class="page">
+    <app-empty-state icon="folder" [title]="'project.notFound' | t">
+      <a class="btn" routerLink="/projects">{{ 'projects.title' | t }}</a>
+    </app-empty-state>
+  </div>
+}

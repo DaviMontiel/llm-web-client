@@ -1,0 +1,144 @@
+<div class="explorer">
+  <app-project-access [projectId]="projectId()" [showSnapshotInfo]="false" />
+
+  @if (readable()) {
+    <div class="toolbar">
+      <div class="filter">
+        <app-icon name="funnel" [size]="13" />
+        <input
+          #filterInput
+          type="search"
+          [value]="filter()"
+          (input)="onFilter(filterInput.value)"
+          [placeholder]="'explorer.filter' | t"
+          [attr.aria-label]="'explorer.filter' | t"
+        />
+      </div>
+      <button
+        type="button"
+        class="icon-btn icon-btn-sm"
+        (click)="reload()"
+        [attr.aria-label]="'explorer.reload' | t"
+        [title]="'explorer.reload' | t"
+      >
+        <app-icon name="refresh-cw" [size]="13" />
+      </button>
+    </div>
+
+    @if (status() === 'loading') {
+      <div class="skeletons" aria-hidden="true">
+        @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+          <div class="skeleton sk" [style.width.%]="85 - (i % 3) * 15"></div>
+        }
+      </div>
+    } @else if (status() === 'error') {
+      <div class="notice notice-danger error">
+        <app-icon name="circle-alert" [size]="15" />
+        <div>
+          <p>{{ errorMessage() }}</p>
+          <button type="button" class="btn btn-sm" (click)="reload()">{{ 'common.retry' | t }}</button>
+        </div>
+      </div>
+    } @else if (filter().trim()) {
+      <ul class="flat" role="list">
+        @for (path of filtered(); track path) {
+          <li>
+            <ng-container *ngTemplateOutlet="fileRow; context: { path: path, name: path, depth: 0 }" />
+          </li>
+        } @empty {
+          <li><app-empty-state icon="search" [title]="'explorer.noMatches' | t" [compact]="true" /></li>
+        }
+      </ul>
+      @if (allFilesTruncated()) {
+        <p class="hint">{{ 'explorer.truncated' | t }}</p>
+      }
+    } @else {
+      @let root = children()[''] ?? [];
+      @if (root.length === 0 && status() === 'ready') {
+        <app-empty-state icon="folder-open" [title]="'explorer.empty' | t" [compact]="true" />
+      } @else {
+        <ul class="tree" role="list">
+          <ng-container *ngTemplateOutlet="level; context: { nodes: root, depth: 0 }" />
+        </ul>
+      }
+    }
+  }
+</div>
+
+<ng-template #level let-nodes="nodes" let-depth="depth">
+  @for (node of nodes; track node.path) {
+    <li>
+      @if (node.kind === 'directory') {
+        <button
+          type="button"
+          class="row dir"
+          [style.padding-left.px]="8 + depth * 14"
+          (click)="toggleDir(node)"
+          (contextmenu)="dirMenu($event, node)"
+          [attr.aria-expanded]="expanded().has(node.path)"
+        >
+          @if (loadingDirs().has(node.path)) {
+            <app-icon name="loader-circle" [size]="13" class="spin chev" />
+          } @else {
+            <app-icon [name]="expanded().has(node.path) ? 'chevron-down' : 'chevron-right'" [size]="13" class="chev" />
+          }
+          <app-icon [name]="expanded().has(node.path) ? 'folder-open' : 'folder'" [size]="14" class="ico" />
+          <span class="name">{{ node.name }}</span>
+        </button>
+        @if (expanded().has(node.path) && children()[node.path]; as kids) {
+          <ul role="list">
+            <ng-container *ngTemplateOutlet="level; context: { nodes: kids, depth: depth + 1 }" />
+          </ul>
+        }
+      } @else {
+        <ng-container *ngTemplateOutlet="fileRow; context: { path: node.path, name: node.name, depth: depth }" />
+      }
+    </li>
+  }
+</ng-template>
+
+<ng-template #fileRow let-path="path" let-name="name" let-depth="depth">
+  <div
+    class="row file"
+    [class.in-context]="contextSet().has(path)"
+    [style.padding-left.px]="22 + depth * 14"
+    (contextmenu)="fileMenu($event, path, true)"
+  >
+    <button type="button" class="file-open" (click)="openFile(path)" [title]="path">
+      <app-icon name="file" [size]="14" class="ico" />
+      <span class="name">{{ name }}</span>
+    </button>
+    @if (chatActions()) {
+      <button
+        type="button"
+        class="icon-btn icon-btn-sm ctx"
+        [class.is-on]="contextSet().has(path)"
+        (click)="toggleContext.emit(path)"
+        [attr.aria-pressed]="contextSet().has(path)"
+        [attr.aria-label]="(contextSet().has(path) ? 'explorer.removeFromContext' : 'explorer.addToContext') | t"
+        [title]="(contextSet().has(path) ? 'explorer.removeFromContext' : 'explorer.addToContext') | t"
+      >
+        <app-icon [name]="contextSet().has(path) ? 'check' : 'plus'" [size]="13" />
+      </button>
+    }
+    <button
+      type="button"
+      class="icon-btn icon-btn-sm more"
+      (click)="fileMenu($event, path, false)"
+      [attr.aria-label]="'explorer.actions' | t"
+      aria-haspopup="menu"
+    >
+      <app-icon name="ellipsis" [size]="13" />
+    </button>
+  </div>
+</ng-template>
+
+<app-file-preview-dialog
+  [projectId]="projectId()"
+  [path]="previewPath()"
+  [inContext]="!!previewPath() && contextSet().has(previewPath()!)"
+  [chatActions]="chatActions()"
+  (closed)="previewPath.set(null)"
+  (toggleContext)="toggleContext.emit($event)"
+  (attach)="attach.emit($event)"
+/>

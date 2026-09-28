@@ -1,0 +1,272 @@
+/* Contenido Markdown renderizado (mensajes del asistente). */
+
+.md {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md > :last-child {
+  margin-bottom: 0;
+}
+
+.md p,
+.md ul,
+.md ol,
+.md blockquote,
+.md .md-table,
+.md pre,
+.md hr {
+  margin: 0 0 14px;
+}
+
+.md h1,
+.md h2,
+.md h3,
+.md h4,
+.md h5,
+.md h6 {
+  margin: 22px 0 10px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.md h1 {
+  font-size: 1.45em;
+}
+
+.md h2 {
+  font-size: 1.25em;
+}
+
+.md h3 {
+  font-size: 1.1em;
+}
+
+.md h4,
+.md h5,
+.md h6 {
+  font-size: 1em;
+}
+
+.md ul,
+.md ol {
+  padding-left: 1.5em;
+}
+
+.md li {
+  margin: 4px 0;
+}
+
+.md li > p {
+  margin: 0 0 6px;
+}
+
+.md li > ul,
+.md li > ol {
+  margin: 4px 0;
+}
+
+.md blockquote {
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--border-strong);
+  color: var(--muted);
+}
+
+.md hr {
+  border: none;
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+.md a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  text-underline-offset: 2px;
+}
+
+.md a:hover {
+  text-decoration-color: var(--accent);
+}
+
+.md strong {
+  font-weight: 600;
+}
+
+.md code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  padding: 0.15em 0.4em;
+  border-radius: 5px;
+  background: var(--inline-code-bg);
+}
+
+.md pre.md-pre {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  overflow-x: auto;
+}
+
+.md pre.md-pre code {
+  padding: 0;
+  background: none;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.md .md-table {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.md table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.md th,
+.md td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.md th {
+  font-weight: 600;
+  background: var(--surface-2);
+}
+
+.md tr:last-child td {
+  border-bottom: none;
+}
+
+.md .md-checkbox {
+  color: var(--muted);
+}
+
+.md .md-checkbox.is-checked {
+  color: var(--success);
+}
+
+.md .md-image-link {
+  font-size: 0.92em;
+}
+
+.stream-caret {
+  display: inline-block;
+  width: 0.5em;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  border-radius: 2px;
+  background: var(--foreground);
+  opacity: 0.8;
+  animation: caret-blink 1s steps(2, start) infinite;
+}
+
+:root[data-motion='reduced'] .stream-caret {
+  animation: none !important;
+}
+
+/* ------------------------------------------------ syntax highlighting (hljs) */
+
+.hljs {
+  color: var(--code-fg);
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-literal,
+.hljs-doctag,
+.hljs-meta .hljs-keyword {
+  color: var(--syn-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-template-tag,
+.hljs-template-variable {
+  color: var(--syn-string);
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-meta {
+  color: var(--syn-comment);
+  font-style: italic;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link {
+  color: var(--syn-number);
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section {
+  color: var(--syn-function);
+}
+
+.hljs-type,
+.hljs-title.class_,
+.hljs-class .hljs-title {
+  color: var(--syn-type);
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-property {
+  color: var(--syn-attr);
+}
+
+.hljs-variable,
+.hljs-params,
+.hljs-name,
+.hljs-tag {
+  color: var(--syn-variable);
+}
+
+.hljs-deletion {
+  color: var(--diff-remove-fg);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 600;
+}
+
+.md-html:first-child > :first-child {
+  margin-top: 0;
+}
+
+.md-html:last-child > :last-child {
+  margin-bottom: 0;
+}
+
+.md .md-raw {
+  white-space: pre-wrap;
+}

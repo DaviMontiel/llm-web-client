@@ -1,0 +1,183 @@
+@let msg = message();
+<article
+  class="message"
+  [class.user]="isUser()"
+  [class.assistant]="!isUser()"
+  [attr.aria-label]="(isUser() ? 'message.you' : 'message.assistant') | t"
+>
+  @if (isUser()) {
+    @if (msg.attachments.length) {
+      <div class="attachments">
+        @for (a of msg.attachments; track a.id) {
+          <app-attachment-chip [sent]="a" [removable]="false" />
+        }
+      </div>
+    }
+    @if (editing()) {
+      <div class="editor">
+        <textarea
+          #editor
+          class="edit-area"
+          appAutosize
+          [maxHeight]="360"
+          [value]="draft()"
+          (input)="draft.set(editor.value)"
+          (keydown)="onEditKeydown($event)"
+          [attr.aria-label]="'message.editLabel' | t"
+        ></textarea>
+        <div class="edit-actions">
+          <span class="edit-hint"><app-icon name="git-branch" [size]="12" /> {{ 'message.editHint' | t }}</span>
+          <div class="edit-buttons">
+            <button type="button" class="btn btn-ghost btn-sm" (click)="cancelEdit()">{{ 'common.cancel' | t }}</button>
+            <button type="button" class="btn btn-primary btn-sm" (click)="saveEdit()" [disabled]="!draft().trim()">
+              {{ 'message.saveAndSend' | t }}
+            </button>
+          </div>
+        </div>
+      </div>
+    } @else if (msg.content) {
+      <div class="bubble">{{ msg.content }}</div>
+    }
+  } @else {
+    @if (msg.context && (msg.context.files.length || msg.context.instructions)) {
+      <div class="context-note">
+        <app-icon name="layers" [size]="12" />
+        <span>
+          {{ 'message.contextUsed' | t: { n: msg.context.files.length } }}
+          @if (msg.context.instructions) {
+            · {{ 'message.withInstructions' | t }}
+          }
+          · {{ msg.context.totalBytes | fileSize }}
+        </span>
+      </div>
+    }
+    @if (waiting()) {
+      <div class="thinking" role="status" [attr.aria-label]="'message.thinking' | t">
+        <span></span><span></span><span></span>
+      </div>
+    } @else if (msg.content) {
+      <app-markdown [content]="msg.content" [streaming]="streaming()" />
+    }
+
+    @if (msg.status === 'error' && msg.error) {
+      <div class="error" role="alert">
+        <app-icon name="circle-alert" [size]="15" />
+        <div class="error-text">
+          <strong>{{ msg.error.localized ? msg.error.message : (errorKey(msg.error.code) | t) }}</strong>
+          @if (msg.error.detail) {
+            <span class="error-detail">{{ msg.error.detail }}</span>
+          }
+        </div>
+        <div class="error-actions">
+          @if (msg.error.code === 'not_configured' || msg.error.code === 'auth') {
+            <a class="btn btn-sm" routerLink="/settings/models">{{ 'message.configureModels' | t }}</a>
+          }
+          <button type="button" class="btn btn-sm" (click)="retry.emit()" [disabled]="busy()">
+            <app-icon name="rotate-ccw" [size]="13" /> {{ 'common.retry' | t }}
+          </button>
+        </div>
+      </div>
+    } @else if (msg.status === 'stopped') {
+      <p class="status-note"><app-icon name="square" [size]="11" /> {{ 'message.stopped' | t }}</p>
+    } @else if (msg.status === 'interrupted') {
+      <p class="status-note"><app-icon name="triangle-alert" [size]="12" /> {{ 'message.interrupted' | t }}</p>
+    }
+  }
+
+  @if (!editing() && !streaming()) {
+    <div class="actions" [class.always]="!!branch()">
+      @if (branch(); as b) {
+        <div class="branches" role="group" [attr.aria-label]="'message.branches' | t">
+          <button
+            type="button"
+            class="icon-btn icon-btn-sm"
+            (click)="switchBranch.emit(-1)"
+            [disabled]="b.index === 0 || busy()"
+            [attr.aria-label]="'message.prevBranch' | t"
+          >
+            <app-icon name="chevron-left" [size]="14" />
+          </button>
+          <span class="branch-count">{{ b.index + 1 }}/{{ b.count }}</span>
+          <button
+            type="button"
+            class="icon-btn icon-btn-sm"
+            (click)="switchBranch.emit(1)"
+            [disabled]="b.index === b.count - 1 || busy()"
+            [attr.aria-label]="'message.nextBranch' | t"
+          >
+            <app-icon name="chevron-right" [size]="14" />
+          </button>
+        </div>
+      }
+      <div class="hover-actions">
+        @if (msg.content) {
+          <button
+            type="button"
+            class="icon-btn icon-btn-sm"
+            (click)="copy()"
+            [attr.aria-label]="'message.copy' | t"
+            [title]="'message.copy' | t"
+          >
+            <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14" />
+          </button>
+        }
+        @if (isUser()) {
+          <button
+            type="button"
+            class="icon-btn icon-btn-sm"
+            (click)="startEdit()"
+            [disabled]="busy()"
+            [attr.aria-label]="'message.edit' | t"
+            [title]="'message.edit' | t"
+          >
+            <app-icon name="pencil" [size]="14" />
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="icon-btn icon-btn-sm"
+            (click)="regenerate.emit()"
+            [disabled]="busy()"
+            [attr.aria-label]="'message.regenerate' | t"
+            [title]="'message.regenerate' | t"
+          >
+            <app-icon name="refresh-cw" [size]="14" />
+          </button>
+        }
+        <button
+          type="button"
+          class="icon-btn icon-btn-sm"
+          (click)="continueFrom.emit()"
+          [disabled]="busy()"
+          [attr.aria-label]="'message.continueFrom' | t"
+          [title]="'message.continueFrom' | t"
+        >
+          <app-icon name="corner-down-right" [size]="14" />
+        </button>
+        <button
+          type="button"
+          class="icon-btn icon-btn-sm danger"
+          (click)="remove.emit()"
+          [attr.aria-label]="'message.delete' | t"
+          [title]="'message.delete' | t"
+        >
+          <app-icon name="trash" [size]="14" />
+        </button>
+        @if (!isUser()) {
+          <span class="meta">
+            @if (msg.modelName) {
+              {{ msg.modelName }}
+            }
+            @if (hasUsage()) {
+              ·
+              {{
+                'message.tokens'
+                  | t: { input: (msg.usage?.inputTokens | tokens), output: (msg.usage?.outputTokens | tokens) }
+              }}
+            }
+          </span>
+        }
+      </div>
+    </div>
+  }
+</article>

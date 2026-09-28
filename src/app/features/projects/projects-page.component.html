@@ -1,0 +1,75 @@
+<div class="page">
+  <header class="page-header">
+    @if (!layout.sidebarOpen() || layout.isMobile()) {
+      <button type="button" class="icon-btn" (click)="layout.toggleSidebar()" [attr.aria-label]="'sidebar.open' | t">
+        <app-icon [name]="layout.isMobile() ? 'menu' : 'panel-left'" />
+      </button>
+    }
+    <div class="page-title">
+      <h1>{{ 'projects.title' | t }}</h1>
+      <p>{{ 'projects.subtitle' | t }}</p>
+    </div>
+    <button type="button" class="btn btn-primary" (click)="create()">
+      <app-icon name="plus" [size]="15" /> {{ 'projects.new' | t }}
+    </button>
+  </header>
+
+  <div class="page-body">
+    @if (!supportsPicker) {
+      <div class="notice notice-warning">
+        <app-icon name="triangle-alert" [size]="15" />
+        <span>{{ 'fs.noDirectoryAccess' | t }}</span>
+      </div>
+    }
+
+    @if (projects.status() === 'loading') {
+      <div class="grid">
+        @for (i of [1, 2, 3]; track i) {
+          <div class="card skeleton" style="height: 118px"></div>
+        }
+      </div>
+    } @else if (projects.sortedProjects().length === 0) {
+      <app-empty-state icon="folder-plus" [title]="'projects.empty' | t" [description]="'projects.emptyHint' | t">
+        <button type="button" class="btn btn-primary" (click)="create()">{{ 'projects.new' | t }}</button>
+      </app-empty-state>
+    } @else {
+      <div class="grid">
+        @for (p of projects.sortedProjects(); track p.id) {
+          <article class="card project-card">
+            <a class="card-link" [routerLink]="['/projects', p.id]">
+              <div class="card-top">
+                <span class="card-icon"><app-icon name="folder" [size]="16" /></span>
+                <span class="badge">{{ sourceKey(p) | t }}</span>
+              </div>
+              <h2 class="card-title">{{ p.name }}</h2>
+              <p class="card-path mono">
+                @if (p.rootName) {
+                  <app-icon name="folder-open" [size]="12" /> {{ p.rootName }}
+                } @else {
+                  {{ 'project.noFolder' | t }}
+                }
+              </p>
+              <p class="card-meta">
+                {{ 'projects.chats' | t: { n: chatCounts().get(p.id) ?? 0 } }} · {{ p.updatedAt | shortDate }}
+              </p>
+            </a>
+            <div class="card-actions">
+              <button type="button" class="btn btn-sm" (click)="newChat(p)">
+                <app-icon name="square-pen" [size]="13" /> {{ 'project.newChat' | t }}
+              </button>
+              <button
+                type="button"
+                class="icon-btn icon-btn-sm"
+                (click)="openMenu($event, p)"
+                [attr.aria-label]="'project.actions' | t"
+                aria-haspopup="menu"
+              >
+                <app-icon name="ellipsis" [size]="15" />
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </div>
+</div>

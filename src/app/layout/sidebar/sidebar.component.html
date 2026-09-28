@@ -1,0 +1,154 @@
+<nav class="sidebar" [attr.aria-label]="'sidebar.label' | t">
+  <div class="top">
+    <a routerLink="/" class="brand" (click)="newChat(); $event.preventDefault()">
+      <span class="mark" aria-hidden="true"><app-icon name="sparkles" [size]="14" [strokeWidth]="2" /></span>
+      <span class="brand-name">Workspace</span>
+    </a>
+    <button
+      type="button"
+      class="icon-btn"
+      (click)="layout.toggleSidebar()"
+      [attr.aria-label]="'sidebar.close' | t"
+      [title]="'sidebar.close' | t"
+    >
+      <app-icon [name]="layout.isMobile() ? 'x' : 'panel-left'" />
+    </button>
+  </div>
+
+  <button type="button" class="new-chat" (click)="newChat()">
+    <app-icon name="square-pen" [size]="16" />
+    <span>{{ 'chat.new' | t }}</span>
+    <span class="kbd-group" aria-hidden="true"
+      ><kbd>{{ isMac ? '⌘' : 'Ctrl' }}</kbd
+      ><kbd>⇧</kbd><kbd>O</kbd></span
+    >
+  </button>
+
+  <div class="search" role="search">
+    <app-icon name="search" [size]="14" class="search-icon" />
+    <input
+      #searchInput
+      class="search-input"
+      type="search"
+      [value]="query()"
+      (input)="query.set(searchInput.value)"
+      (keydown.escape)="clearQuery(searchInput)"
+      [placeholder]="'sidebar.searchPlaceholder' | t"
+      [attr.aria-label]="'sidebar.searchPlaceholder' | t"
+    />
+    @if (searching()) {
+      <app-icon name="loader-circle" [size]="13" class="spin search-state" />
+    } @else if (query()) {
+      <button
+        type="button"
+        class="icon-btn icon-btn-sm search-clear"
+        (click)="clearQuery(searchInput)"
+        [attr.aria-label]="'common.clear' | t"
+      >
+        <app-icon name="x" [size]="12" />
+      </button>
+    }
+  </div>
+
+  <div class="nav">
+    <a class="nav-item" routerLink="/projects" routerLinkActive="is-active" (click)="openChat()">
+      <app-icon name="folder" [size]="15" />
+      <span>{{ 'nav.projects' | t }}</span>
+    </a>
+  </div>
+
+  <div class="history" [attr.aria-label]="'history.label' | t">
+    @if (store.status() === 'loading') {
+      <div class="skeletons" aria-hidden="true">
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+          <div class="skeleton sk-row" [style.width.%]="90 - i * 8"></div>
+        }
+      </div>
+    } @else if (rows().length === 0) {
+      @if (query()) {
+        <app-empty-state
+          icon="search"
+          [title]="'history.noResults' | t"
+          [description]="'history.noResultsHint' | t"
+          [compact]="true"
+        />
+      } @else if (!hasChats()) {
+        <app-empty-state
+          icon="message-square"
+          [title]="'history.empty' | t"
+          [description]="'history.emptyHint' | t"
+          [compact]="true"
+        />
+      }
+    } @else {
+      <cdk-virtual-scroll-viewport [itemSize]="rowHeight" class="viewport" minBufferPx="400" maxBufferPx="800">
+        <ul class="list" role="list">
+          <li *cdkVirtualFor="let row of rows(); trackBy: trackRow" class="row" [style.height.px]="rowHeight">
+            @if (row.kind === 'header') {
+              <span class="group-label">{{ row.label }}</span>
+            } @else {
+              @let chat = row.chat;
+              <div
+                class="chat-item"
+                [class.is-active]="chat.id === store.activeChatId()"
+                (contextmenu)="contextMenu($event, chat)"
+              >
+                <a
+                  class="chat-link"
+                  [routerLink]="['/chat', chat.id]"
+                  (click)="openChat()"
+                  [attr.aria-current]="chat.id === store.activeChatId() ? 'page' : null"
+                >
+                  @if (store.generatingChats().has(chat.id)) {
+                    <app-icon name="loader-circle" [size]="12" class="spin lead" />
+                  } @else if (chat.temporary) {
+                    <app-icon name="message-square-dashed" [size]="13" class="lead" />
+                  }
+                  <span class="chat-title">{{ title(chat) }}</span>
+                  @if (chat.favorite) {
+                    <app-icon name="star" [size]="11" class="fav" [label]="'chat.favorite' | t" />
+                  }
+                </a>
+                <button
+                  type="button"
+                  class="icon-btn icon-btn-sm more"
+                  (click)="openMenu($event, chat)"
+                  [attr.aria-label]="'chat.actionsFor' | t: { title: title(chat) }"
+                  aria-haspopup="menu"
+                >
+                  <app-icon name="ellipsis" [size]="15" />
+                </button>
+              </div>
+            }
+          </li>
+        </ul>
+      </cdk-virtual-scroll-viewport>
+    }
+  </div>
+
+  <footer class="footer">
+    <div class="project-block">
+      <span class="footer-label">{{ 'project.label' | t }}</span>
+      <button type="button" class="project-btn" (click)="projectMenu($event)" aria-haspopup="menu">
+        <app-icon [name]="activeProject() ? 'folder-open' : 'folder'" [size]="15" />
+        <span class="truncate">{{ activeProject()?.name ?? ('project.none' | t) }}</span>
+        <app-icon name="chevron-down" [size]="13" class="chev" />
+      </button>
+    </div>
+    <div class="footer-actions">
+      <a class="nav-item" routerLink="/settings" routerLinkActive="is-active" (click)="openChat()">
+        <app-icon name="settings" [size]="15" />
+        <span>{{ 'nav.settings' | t }}</span>
+      </a>
+      <button
+        type="button"
+        class="icon-btn"
+        (click)="layout.shortcutsOpen.set(true)"
+        [attr.aria-label]="'shortcuts.title' | t"
+        [title]="'shortcuts.title' | t"
+      >
+        <app-icon name="keyboard" [size]="15" />
+      </button>
+    </div>
+  </footer>
+</nav>

@@ -1,0 +1,101 @@
+<form
+  class="composer"
+  [class.is-focused]="focused()"
+  (submit)="$event.preventDefault(); send()"
+  [attr.aria-label]="'composer.label' | t"
+>
+  @if (pending().length > 0) {
+    <div class="attachments" role="list" [attr.aria-label]="'composer.attachments' | t">
+      @for (p of pending(); track p.id) {
+        <app-attachment-chip role="listitem" [pending]="p" (removed)="removeAttachment(p.id)" />
+      }
+    </div>
+  }
+
+  <label class="sr-only" for="composer-input">{{ 'composer.label' | t }}</label>
+  <textarea
+    #textarea
+    id="composer-input"
+    class="input-area"
+    appAutosize
+    [maxHeight]="280"
+    rows="1"
+    [value]="text()"
+    (input)="onInput(textarea.value)"
+    (keydown)="onKeydown($event)"
+    (paste)="onPaste($event)"
+    (focus)="focused.set(true)"
+    (blur)="focused.set(false)"
+    [placeholder]="placeholder() || ('composer.placeholder' | t)"
+    [attr.aria-describedby]="'composer-hint'"
+    spellcheck="true"
+  ></textarea>
+
+  @if (visionWarning()) {
+    <p class="warning" role="status">
+      <app-icon name="triangle-alert" [size]="13" /> {{ 'composer.visionWarning' | t }}
+    </p>
+  }
+
+  <div class="toolbar">
+    <div class="left">
+      <button
+        type="button"
+        class="icon-btn attach"
+        (click)="openAttachMenu($event)"
+        [attr.aria-label]="'composer.attach' | t"
+        [title]="'composer.attach' | t"
+        aria-haspopup="menu"
+      >
+        <app-icon name="plus" [size]="18" />
+      </button>
+      @if (showTemporaryToggle()) {
+        <div class="temp-toggle" [class.is-on]="temporary()">
+          <app-switch
+            [checked]="temporary()"
+            (checkedChange)="temporaryChange.emit($event)"
+            [label]="'chat.temporary' | t"
+          />
+          <span aria-hidden="true">{{ 'chat.temporary' | t }}</span>
+        </div>
+      }
+      @if (pending().length > 0) {
+        <span class="count">{{ 'composer.fileCount' | t: { n: pending().length, max: limits().maxFiles } }}</span>
+      }
+    </div>
+    <div class="right">
+      @if (showCounter()) {
+        <span class="chars" [class.over]="overLimit()">{{ charCount() }} / {{ limits().maxMessageChars }}</span>
+      }
+      <app-model-picker [value]="model()" [compact]="true" placement="top" (changed)="modelChange.emit($event)" />
+      @if (generating()) {
+        <button
+          type="button"
+          class="send stop"
+          (click)="stop.emit()"
+          [attr.aria-label]="'composer.stop' | t"
+          [title]="'composer.stop' | t"
+        >
+          <app-icon name="square" [size]="12" [strokeWidth]="3" />
+        </button>
+      } @else {
+        <button
+          type="submit"
+          class="send"
+          [disabled]="!canSend()"
+          [attr.aria-label]="'composer.send' | t"
+          [title]="'composer.send' | t"
+        >
+          @if (submitting() || processing()) {
+            <app-icon name="loader-circle" [size]="16" class="spin" />
+          } @else {
+            <app-icon name="arrow-up" [size]="17" [strokeWidth]="2.25" />
+          }
+        </button>
+      }
+    </div>
+  </div>
+  <p id="composer-hint" class="sr-only">
+    {{ enterToSend() ? ('composer.hintEnter' | t) : ('composer.hintModEnter' | t: { mod: isMac ? '⌘' : 'Ctrl' }) }}
+  </p>
+</form>

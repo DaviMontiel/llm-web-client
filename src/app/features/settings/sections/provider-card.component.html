@@ -1,0 +1,227 @@
+@let p = provider();
+@let cfg = config();
+<article class="card" [class.is-open]="expanded()">
+  <button
+    type="button"
+    class="head"
+    (click)="expanded.set(!expanded())"
+    [attr.aria-expanded]="expanded()"
+    [attr.aria-controls]="'prov-' + p.id"
+  >
+    <span class="avatar" aria-hidden="true">{{ p.name.charAt(0) }}</span>
+    <span class="title">
+      <span class="name">{{ p.name }}</span>
+      <span class="desc">{{ p.description }}</span>
+    </span>
+    @if (configured()) {
+      <span class="badge badge-success"
+        ><app-icon name="circle-check" [size]="12" /> {{ 'provider.configured' | t }}</span
+      >
+    } @else {
+      <span class="badge">{{ 'provider.notConfigured' | t }}</span>
+    }
+    <app-icon [name]="expanded() ? 'chevron-down' : 'chevron-right'" [size]="15" class="chev" />
+  </button>
+
+  @if (expanded()) {
+    <div class="body" [id]="'prov-' + p.id" animate.enter="anim-fade-in">
+      <div class="row between">
+        <span class="label">{{ 'provider.enabled' | t }}</span>
+        <app-switch [checked]="cfg.enabled" (checkedChange)="setEnabled($event)" [label]="'provider.enabled' | t" />
+      </div>
+
+      @if (p.custom) {
+        <label class="field">
+          <span class="field-label">{{ 'provider.name' | t }}</span>
+          <input class="input" [value]="p.name" (change)="rename($any($event.target).value)" />
+        </label>
+      }
+
+      <label class="field">
+        <span class="field-label"
+          >{{ 'provider.apiKey' | t }}{{ p.requiresApiKey ? '' : ' ' + ('provider.optional' | t) }}</span
+        >
+        <div class="key-row">
+          <input
+            class="input mono"
+            [type]="showKey() ? 'text' : 'password'"
+            [value]="cfg.apiKey"
+            (change)="setKey($any($event.target).value)"
+            [placeholder]="'provider.apiKeyPlaceholder' | t"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button
+            type="button"
+            class="icon-btn"
+            (click)="showKey.set(!showKey())"
+            [attr.aria-label]="(showKey() ? 'provider.hideKey' : 'provider.showKey') | t"
+            [attr.aria-pressed]="showKey()"
+          >
+            <app-icon [name]="showKey() ? 'eye-off' : 'eye'" [size]="15" />
+          </button>
+        </div>
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" [checked]="!cfg.persistApiKey" (change)="setPersist(!$any($event.target).checked)" />
+        {{ 'provider.sessionOnly' | t }}
+      </label>
+
+      @if (p.custom) {
+        <label class="checkbox">
+          <input type="checkbox" [checked]="p.requiresApiKey" (change)="setRequiresKey($any($event.target).checked)" />
+          {{ 'provider.requiresKey' | t }}
+        </label>
+      }
+
+      <label class="field">
+        <span class="field-label">{{ 'provider.baseUrl' | t }}</span>
+        <input
+          class="input mono"
+          [value]="baseUrl() || p.defaultBaseUrl"
+          (change)="setBaseUrl($any($event.target).value)"
+          spellcheck="false"
+        />
+        <span class="field-hint">{{ corsKey() | t }}</span>
+      </label>
+
+      <div class="row">
+        <button type="button" class="btn btn-sm" (click)="test()" [disabled]="testState() === 'loading'">
+          @if (testState() === 'loading') {
+            <app-icon name="loader-circle" [size]="13" class="spin" />
+          } @else {
+            <app-icon name="zap" [size]="13" />
+          }
+          {{ 'provider.test' | t }}
+        </button>
+        <button type="button" class="btn btn-sm" (click)="sync()" [disabled]="syncing()">
+          <app-icon name="refresh-cw" [size]="13" [class.spin]="syncing()" /> {{ 'provider.sync' | t }}
+        </button>
+        @if (p.docsUrl) {
+          <a class="btn btn-sm btn-ghost" [href]="p.docsUrl" target="_blank" rel="noopener noreferrer"
+            ><app-icon name="external-link" [size]="13" /> {{ 'provider.docs' | t }}</a
+          >
+        }
+      </div>
+      @if (testState() === 'success' || testState() === 'error') {
+        <p class="test" [class.ok]="testState() === 'success'" [class.fail]="testState() === 'error'" role="status">
+          <app-icon [name]="testState() === 'success' ? 'circle-check' : 'circle-alert'" [size]="13" />
+          {{ testMessage() }}
+        </p>
+      }
+
+      <div class="models">
+        <div class="models-head">
+          <span class="label">{{ 'provider.models' | t }} · {{ models().length }}</span>
+          @if (cfg.lastSyncedAt) {
+            <span class="hint">{{ 'provider.lastSync' | t: { date: (cfg.lastSyncedAt | shortDate: true) } }}</span>
+          }
+        </div>
+        <ul class="model-list">
+          @for (m of models(); track m.id) {
+            <li class="model">
+              <span class="m-main">
+                <span class="m-name">{{ m.name }}</span>
+                <span class="m-id mono">{{ m.id }}{{ m.contextWindow ? ' · ' + (m.contextWindow | tokens) : '' }}</span>
+              </span>
+              <span class="badge m-origin">{{ originKey(m) | t }}</span>
+              <button
+                type="button"
+                class="cap"
+                [class.on]="m.capabilities.vision"
+                (click)="toggleVision(m)"
+                [attr.aria-pressed]="m.capabilities.vision"
+                [title]="'model.vision' | t"
+              >
+                <app-icon name="image" [size]="13" />
+              </button>
+              <button
+                type="button"
+                class="cap"
+                [class.on]="m.capabilities.streaming"
+                (click)="toggleStreaming(m)"
+                [attr.aria-pressed]="m.capabilities.streaming"
+                [title]="'model.streaming' | t"
+              >
+                <app-icon name="zap" [size]="13" />
+              </button>
+              <button
+                type="button"
+                class="icon-btn icon-btn-sm"
+                (click)="removeModel(m)"
+                [attr.aria-label]="'provider.removeModel' | t: { name: m.name }"
+              >
+                <app-icon name="x" [size]="13" />
+              </button>
+            </li>
+          } @empty {
+            <li class="empty">{{ 'provider.noModels' | t }}</li>
+          }
+        </ul>
+        <div class="row">
+          @if (!addingModel()) {
+            <button type="button" class="btn btn-sm btn-ghost" (click)="addingModel.set(true)">
+              <app-icon name="plus" [size]="13" /> {{ 'provider.addModel' | t }}
+            </button>
+          }
+          @if (hiddenCount() > 0) {
+            <button type="button" class="btn btn-sm btn-ghost" (click)="restoreHidden()">
+              {{ 'provider.restoreHidden' | t: { n: hiddenCount() } }}
+            </button>
+          }
+        </div>
+        @if (addingModel()) {
+          <form class="add-model" (submit)="$event.preventDefault(); addModel()">
+            <input
+              class="input mono"
+              [value]="newModelId()"
+              (input)="newModelId.set($any($event.target).value)"
+              [placeholder]="'provider.modelId' | t"
+              [attr.aria-label]="'provider.modelId' | t"
+              required
+            />
+            <input
+              class="input"
+              [value]="newModelName()"
+              (input)="newModelName.set($any($event.target).value)"
+              [placeholder]="'provider.modelName' | t"
+              [attr.aria-label]="'provider.modelName' | t"
+            />
+            <input
+              class="input"
+              inputmode="numeric"
+              [value]="newModelContext()"
+              (input)="newModelContext.set($any($event.target).value)"
+              [placeholder]="'provider.modelContext' | t"
+              [attr.aria-label]="'provider.modelContext' | t"
+            />
+            <label class="checkbox"
+              ><input
+                type="checkbox"
+                [checked]="newModelVision()"
+                (change)="newModelVision.set($any($event.target).checked)"
+              />
+              {{ 'model.vision' | t }}</label
+            >
+            <div class="row">
+              <button type="button" class="btn btn-sm btn-ghost" (click)="addingModel.set(false)">
+                {{ 'common.cancel' | t }}
+              </button>
+              <button type="submit" class="btn btn-sm btn-primary" [disabled]="!newModelId().trim()">
+                {{ 'common.add' | t }}
+              </button>
+            </div>
+          </form>
+        }
+      </div>
+
+      @if (p.custom) {
+        <div class="row end">
+          <button type="button" class="btn btn-sm btn-danger" (click)="removeProvider()">
+            <app-icon name="trash" [size]="13" /> {{ 'provider.remove' | t }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+</article>

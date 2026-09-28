@@ -1,0 +1,189 @@
+<aside class="panel" [attr.aria-label]="'context.panel' | t">
+  <header class="head">
+    <div class="tabs" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        class="tab"
+        [class.is-active]="tab() === 'context'"
+        [attr.aria-selected]="tab() === 'context'"
+        (click)="setTab('context')"
+      >
+        <app-icon name="layers" [size]="14" /> {{ 'context.tab' | t }}
+        @if (files().length + bridge.pending().length > 0) {
+          <span class="count">{{ files().length + bridge.pending().length }}</span>
+        }
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="tab"
+        [class.is-active]="tab() === 'files'"
+        [attr.aria-selected]="tab() === 'files'"
+        (click)="setTab('files')"
+      >
+        <app-icon name="folder-tree" [size]="14" /> {{ 'context.filesTab' | t }}
+      </button>
+    </div>
+    <button
+      type="button"
+      class="icon-btn"
+      (click)="layout.rightPanel.set('none')"
+      [attr.aria-label]="'common.close' | t"
+    >
+      <app-icon name="x" [size]="15" />
+    </button>
+  </header>
+
+  <div class="body" role="tabpanel">
+    @if (tab() === 'context') {
+      <!-- Proyecto -->
+      <section class="section">
+        <h3 class="section-title">{{ 'context.project' | t }}</h3>
+        @if (project(); as p) {
+          <button type="button" class="project" (click)="pickProject($event)" aria-haspopup="menu">
+            <app-icon name="folder-open" [size]="15" />
+            <span class="project-text">
+              <span class="project-name">{{ p.name }}</span>
+              @if (p.rootName) {
+                <span class="project-root mono">{{ p.rootName }}</span>
+              }
+            </span>
+            <app-icon name="chevron-down" [size]="13" class="chev" />
+          </button>
+          <app-project-access [projectId]="p.id" />
+        } @else {
+          <app-empty-state
+            icon="folder"
+            [title]="'context.noProject' | t"
+            [description]="'context.noProjectHint' | t"
+            [compact]="true"
+          >
+            <button type="button" class="btn btn-sm" (click)="pickProject($event)">{{ 'project.select' | t }}</button>
+            <a class="btn btn-sm btn-ghost" routerLink="/projects">{{ 'project.manage' | t }}</a>
+          </app-empty-state>
+        }
+      </section>
+
+      @if (project(); as p) {
+        @if (p.instructions.trim()) {
+          <section class="section">
+            <h3 class="section-title">{{ 'context.instructions' | t }}</h3>
+            <label class="item checkable">
+              <input type="checkbox" [checked]="chat().context.includeInstructions" (change)="toggleInstructions()" />
+              <span class="item-name">{{ 'context.projectInstructions' | t }}</span>
+              <span class="item-size">{{ p.instructions.trim().length | fileSize }}</span>
+            </label>
+          </section>
+        }
+
+        <section class="section">
+          <div class="section-head">
+            <h3 class="section-title">{{ 'context.projectFiles' | t }}</h3>
+            @if (files().length) {
+              <button type="button" class="link" (click)="clearFiles()">{{ 'common.clear' | t }}</button>
+            }
+          </div>
+          @for (f of files(); track f) {
+            <div class="item">
+              <app-icon name="check" [size]="13" class="ok" />
+              <span class="item-name mono" [title]="f">{{ f }}</span>
+              <span class="item-size">{{ sizes()[f] | fileSize }}</span>
+              <button
+                type="button"
+                class="icon-btn icon-btn-sm"
+                (click)="removeFile(f)"
+                [attr.aria-label]="'context.remove' | t: { name: f }"
+              >
+                <app-icon name="x" [size]="12" />
+              </button>
+            </div>
+          } @empty {
+            <p class="empty-line">
+              {{ 'context.noFiles' | t }}
+              <button type="button" class="link" (click)="setTab('files')">{{ 'context.browse' | t }}</button>
+            </p>
+          }
+        </section>
+      }
+
+      <section class="section">
+        <h3 class="section-title">{{ 'context.attachments' | t }}</h3>
+        @for (a of bridge.pending(); track a.id) {
+          <div class="item">
+            <app-icon [name]="a.attachment?.kind === 'image' ? 'image' : 'paperclip'" [size]="13" class="ok" />
+            <span class="item-name" [title]="a.name">{{ a.attachment?.path ?? a.name }}</span>
+            <span class="item-size">{{ a.size | fileSize }}</span>
+            <button
+              type="button"
+              class="icon-btn icon-btn-sm"
+              (click)="bridge.removePending$.next(a.id)"
+              [attr.aria-label]="'context.remove' | t: { name: a.name }"
+            >
+              <app-icon name="x" [size]="12" />
+            </button>
+          </div>
+        } @empty {
+          <p class="empty-line">{{ 'context.noAttachments' | t }}</p>
+        }
+      </section>
+
+      <section class="section summary" [class.over]="overLimit()">
+        <div class="summary-row">
+          <span
+            >{{ 'context.summary' | t: { n: files().length + bridge.pending().length } }} ·
+            {{ totalBytes() | fileSize }}</span
+          >
+          <span class="muted">/ {{ limitBytes() | fileSize }}</span>
+        </div>
+        <div
+          class="bar"
+          role="progressbar"
+          [attr.aria-valuenow]="usagePct()"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          [attr.aria-label]="'context.limit' | t"
+        >
+          <span [style.width.%]="usagePct()"></span>
+        </div>
+        @if (overLimit()) {
+          <p class="warn">{{ 'context.overLimit' | t }}</p>
+        }
+        @if (unknownSizes() && files().length) {
+          <p class="note">{{ 'context.unknownSizes' | t }}</p>
+        }
+        @if (tokenInfo(); as ti) {
+          <div class="summary-row tokens">
+            <span>{{ 'context.tokensUsed' | t }}</span>
+            <span class="mono"
+              >{{ ti.used | tokens }}{{ ti.max ? ' / ' : '' }}{{ ti.max ? (ti.max | tokens) : '' }}</span
+            >
+          </div>
+          @if (ti.pct !== null) {
+            <div class="bar"><span [style.width.%]="ti.pct"></span></div>
+          }
+          <p class="note">{{ 'context.tokensNote' | t }}</p>
+        }
+      </section>
+    } @else {
+      @if (project(); as p) {
+        <app-project-explorer
+          [projectId]="p.id"
+          [contextFiles]="files()"
+          (toggleContext)="toggleFile($event)"
+          (addToContext)="addFiles($event)"
+          (attach)="attachFromProject.emit($event)"
+        />
+      } @else {
+        <app-empty-state
+          icon="folder-tree"
+          [title]="'context.noProject' | t"
+          [description]="'context.noProjectHint' | t"
+          [compact]="true"
+        >
+          <button type="button" class="btn btn-sm" (click)="pickProject($event)">{{ 'project.select' | t }}</button>
+        </app-empty-state>
+      }
+    }
+  </div>
+</aside>
